@@ -1,5 +1,5 @@
 /**
- * Intro.js v2.0.1
+ * Intro.js v2.0
  * https://github.com/usablica/intro.js
  * MIT licensed
  *
@@ -19,7 +19,7 @@
   }
 } (this, function (exports) {
   //Default config/variables
-  var VERSION = '2.0.1';
+  var VERSION = '2.0';
 
   /**
    * IntroJs main class
@@ -28,6 +28,10 @@
    */
   function IntroJs(obj) {
     this._targetElement = obj;
+    this._introjsWrapper = document.createElement('div');
+    this._introjsWrapper.className = 'introjs';
+    this._targetElement.appendChild(this._introjsWrapper);
+
     this._introItems = [];
 
     this._options = {
@@ -95,18 +99,18 @@
         //use querySelector function only when developer used CSS selector
         if (typeof(currentItem.element) === 'string') {
           //grab the element with given selector from the page
-          currentItem.element = document.querySelector(currentItem.element);
+          currentItem.element = targetElm.querySelector(currentItem.element);
         }
 
         //intro without element
         if (typeof(currentItem.element) === 'undefined' || currentItem.element == null) {
-          var floatingElementQuery = document.querySelector(".introjsFloatingElement");
+          var floatingElementQuery = self._introjsWrapper.querySelector(".introjsFloatingElement");
 
           if (floatingElementQuery == null) {
             floatingElementQuery = document.createElement('div');
             floatingElementQuery.className = 'introjsFloatingElement';
 
-            document.body.appendChild(floatingElementQuery);
+            targetElm.appendChild(floatingElementQuery);
           }
 
           currentItem.element  = floatingElementQuery;
@@ -120,7 +124,7 @@
 
     } else {
       //use steps from data-* annotations
-      var allIntroSteps = targetElm.querySelectorAll('*[data-intro]');
+      var allIntroSteps = self._introjsWrapper.querySelectorAll('*[data-intro]');
       //if there's no element to intro
       if (allIntroSteps.length < 1) {
         return false;
@@ -129,12 +133,6 @@
       //first add intro items with data-step
       for (var i = 0, elmsLength = allIntroSteps.length; i < elmsLength; i++) {
         var currentElement = allIntroSteps[i];
-
-        // skip hidden elements
-        if (currentElement.style.display == 'none') {
-          continue;
-        }
-
         var step = parseInt(currentElement.getAttribute('data-step'), 10);
 
         if (step > 0) {
@@ -198,8 +196,8 @@
       //then, start the show
       _nextStep.call(self);
 
-      var skipButton     = targetElm.querySelector('.introjs-skipbutton'),
-          nextStepButton = targetElm.querySelector('.introjs-nextbutton');
+      var skipButton     = self._introjsWrapper.querySelector('.introjs-skipbutton'),
+          nextStepButton = self._introjsWrapper.querySelector('.introjs-nextbutton');
 
       self._onKeyDown = function(e) {
         if (e.keyCode === 27 && self._options.exitOnEsc == true) {
@@ -246,8 +244,8 @@
       };
 
       self._onResize = function(e) {
-        _setHelperLayerPosition.call(self, document.querySelector('.introjs-helperLayer'));
-        _setHelperLayerPosition.call(self, document.querySelector('.introjs-tooltipReferenceLayer'));
+        _setHelperLayerPosition.call(self, self._introjsWrapper.querySelector('.introjs-helperLayer'));
+        _setHelperLayerPosition.call(self, self._introjsWrapper.querySelector('.introjs-tooltipReferenceLayer'));
       };
 
       if (window.addEventListener) {
@@ -321,7 +319,7 @@
       if (typeof (this._introCompleteCallback) === 'function') {
         this._introCompleteCallback.call(this);
       }
-      _exitIntro.call(this, this._targetElement);
+      _exitIntro.call(this, this._introjsWrapper);
       return;
     }
 
@@ -359,11 +357,10 @@
    *
    * @api private
    * @method _exitIntro
-   * @param {Object} targetElement
    */
-  function _exitIntro(targetElement) {
+  function _exitIntro() {
     //remove overlay layer from the page
-    var overlayLayer = targetElement.querySelector('.introjs-overlay');
+    var overlayLayer = this._introjsWrapper.querySelector('.introjs-overlay');
 
     //return if intro already completed or skipped
     if (overlayLayer == null) {
@@ -379,35 +376,35 @@
     }, 500);
 
     //remove all helper layers
-    var helperLayer = targetElement.querySelector('.introjs-helperLayer');
+    var helperLayer = this._introjsWrapper.querySelector('.introjs-helperLayer');
     if (helperLayer) {
       helperLayer.parentNode.removeChild(helperLayer);
     }
 
-    var referenceLayer = targetElement.querySelector('.introjs-tooltipReferenceLayer');
+    var referenceLayer = this._introjsWrapper.querySelector('.introjs-tooltipReferenceLayer');
     if (referenceLayer) {
       referenceLayer.parentNode.removeChild(referenceLayer);
     }
     //remove disableInteractionLayer
-    var disableInteractionLayer = targetElement.querySelector('.introjs-disableInteraction');
+    var disableInteractionLayer = this._introjsWrapper.querySelector('.introjs-disableInteraction');
     if (disableInteractionLayer) {
       disableInteractionLayer.parentNode.removeChild(disableInteractionLayer);
     }
 
     //remove intro floating element
-    var floatingElement = document.querySelector('.introjsFloatingElement');
+    var floatingElement = this._introjsWrapper.querySelector('.introjsFloatingElement');
     if (floatingElement) {
       floatingElement.parentNode.removeChild(floatingElement);
     }
 
     //remove `introjs-showElement` class from the element
-    var showElement = document.querySelector('.introjs-showElement');
+    var showElement = this._introjsWrapper.querySelector('.introjs-showElement');
     if (showElement) {
       showElement.className = showElement.className.replace(/introjs-[a-zA-Z]+/g, '').replace(/^\s+|\s+$/g, ''); // This is a manual trim.
     }
 
     //remove `introjs-fixParent` class from the elements
-    var fixParents = document.querySelectorAll('.introjs-fixParent');
+    var fixParents = this._introjsWrapper.querySelectorAll('.introjs-fixParent');
     if (fixParents && fixParents.length > 0) {
       for (var i = fixParents.length - 1; i >= 0; i--) {
         fixParents[i].className = fixParents[i].className.replace(/introjs-fixParent/g, '').replace(/^\s+|\s+$/g, '');
@@ -701,13 +698,9 @@
           elementPosition = _getOffset(currentElement.element),
           widthHeightPadding = 10;
 
-      // If the target element is fixed, the tooltip should be fixed as well.
-      // Otherwise, remove a fixed class that may be left over from the previous
-      // step.
+      // if the target element is fixed, the tooltip should be fixed as well.
       if (_isFixed(currentElement.element)) {
         helperLayer.className += ' introjs-fixedTooltip';
-      } else {
-        helperLayer.className = helperLayer.className.replace(' introjs-fixedTooltip', '');
       }
 
       if (currentElement.position == 'floating') {
@@ -730,11 +723,11 @@
    * @method _disableInteraction
    */
   function _disableInteraction() {
-    var disableInteractionLayer = document.querySelector('.introjs-disableInteraction');
+    var disableInteractionLayer = this._introjsWrapper.querySelector('.introjs-disableInteraction');
     if (disableInteractionLayer === null) {
       disableInteractionLayer = document.createElement('div');
       disableInteractionLayer.className = 'introjs-disableInteraction';
-      this._targetElement.appendChild(disableInteractionLayer);
+      this._introjsWrapper.appendChild(disableInteractionLayer);
     }
 
     _setHelperLayerPosition.call(this, disableInteractionLayer);
@@ -754,8 +747,8 @@
     }
 
     var self = this,
-        oldHelperLayer = document.querySelector('.introjs-helperLayer'),
-        oldReferenceLayer = document.querySelector('.introjs-tooltipReferenceLayer'),
+        oldHelperLayer = this._introjsWrapper.querySelector('.introjs-helperLayer'),
+        oldReferenceLayer = this._introjsWrapper.querySelector('.introjs-tooltipReferenceLayer'),
         highlightClass = 'introjs-helperLayer',
         elementPosition = _getOffset(targetElement.element);
 
@@ -796,18 +789,16 @@
       _setHelperLayerPosition.call(self, oldReferenceLayer);
 
       //remove `introjs-fixParent` class from the elements
-      var fixParents = document.querySelectorAll('.introjs-fixParent');
+      var fixParents = this._introjsWrapper.querySelectorAll('.introjs-fixParent');
       if (fixParents && fixParents.length > 0) {
         for (var i = fixParents.length - 1; i >= 0; i--) {
           fixParents[i].className = fixParents[i].className.replace(/introjs-fixParent/g, '').replace(/^\s+|\s+$/g, '');
         };
       }
 
-      //remove old classes if the element still exist
-      var oldShowElement = document.querySelector('.introjs-showElement');
-      if(oldShowElement) {
-        oldShowElement.className = oldShowElement.className.replace(/introjs-[a-zA-Z]+/g, '').replace(/^\s+|\s+$/g, '');
-      }
+      //remove old classes
+      var oldShowElement = this._introjsWrapper.querySelector('.introjs-showElement');
+      oldShowElement.className = oldShowElement.className.replace(/introjs-[a-zA-Z]+/g, '').replace(/^\s+|\s+$/g, '');
 
       //we should wait until the CSS3 transition is competed (it's 0.3 sec) to prevent incorrect `height` and `width` calculation
       if (self._lastShowElementTimer) {
@@ -862,8 +853,8 @@
       _setHelperLayerPosition.call(self, referenceLayer);
 
       //add helper layer to target element
-      this._targetElement.appendChild(helperLayer);
-      this._targetElement.appendChild(referenceLayer);
+      targetElement.appendChild(helperLayer);
+      targetElement.appendChild(referenceLayer);
 
       arrowLayer.className = 'introjs-arrow';
 
@@ -969,7 +960,7 @@
           self._introExitCallback.call(self);
         }
 
-        _exitIntro.call(self, self._targetElement);
+        _exitIntro.call(self, self._introjsWrapper);
       };
 
       buttonsLayer.appendChild(skipTooltipButton);
@@ -1018,8 +1009,7 @@
 
     var currentElementPosition = _getPropValue(targetElement.element, 'position');
     if (currentElementPosition !== 'absolute' &&
-        currentElementPosition !== 'relative' &&
-        currentElementPosition !== 'fixed') {
+        currentElementPosition !== 'relative') {
       //change to new intro item
       targetElement.element.className += ' introjs-relativePosition';
     }
@@ -1201,7 +1191,7 @@
    * @method _removeHintTooltip
    */
   function _removeHintTooltip() {
-    var tooltip = this._targetElement.querySelector('.introjs-hintReference');
+    var tooltip = this._introjsWrapper.querySelector('.introjs-hintReference');
 
 
     if (tooltip) {
@@ -1215,10 +1205,9 @@
    * Start parsing hint items
    *
    * @api private
-   * @param {Object} targetElm
    * @method _startHint
    */
-  function _populateHints(targetElm) {
+  function _populateHints() {
     var self = this;
     this._introItems = []
 
@@ -1228,7 +1217,7 @@
 
         if (typeof(currentItem.element) === 'string') {
           //grab the element with given selector from the page
-          currentItem.element = document.querySelector(currentItem.element);
+          currentItem.element = this._targetElement.querySelector(currentItem.element);
         }
 
         currentItem.hintPosition = currentItem.hintPosition || 'top-middle';
@@ -1238,7 +1227,7 @@
         }
       }
     } else {
-      var hints = targetElm.querySelectorAll('*[data-hint]');
+      var hints = this._targetElement.querySelectorAll('*[data-hint]');
 
       if (hints.length < 1) {
         return false;
@@ -1280,9 +1269,6 @@
   function _reAlignHints() {
     for (var i = 0, l = this._introItems.length; i < l; i++) {
       var item = this._introItems[i];
-
-      if (typeof (item.targetElement) == 'undefined') continue;
-
       _alignHintPosition.call(this, item.hintPosition, item.element, item.targetElement)
     }
   }
@@ -1295,7 +1281,7 @@
    */
   function _hideHint(stepId) {
     _removeHintTooltip.call(this);
-    var hint = this._targetElement.querySelector('.introjs-hint[data-step="' + stepId + '"]');
+    var hint = this._hintsWrapper.querySelector('.introjs-hint[data-step="' + stepId + '"]');
 
     if (hint) {
       hint.className += ' introjs-hidehint';
@@ -1316,21 +1302,19 @@
   function _addHints() {
     var self = this;
 
-    var oldHintsWrapper = document.querySelector('.introjs-hints');
-
-    if (oldHintsWrapper != null) {
-      hintsWrapper = oldHintsWrapper;
-    } else {
-      var hintsWrapper = document.createElement('div');
-      hintsWrapper.className = 'introjs-hints';
+    if (this._hintsWrapper == null) {
+      this._hintsWrapper = document.createElement('div');
+      this._hintsWrapper.className = 'introjs-hints';
     }
 
     for (var i = 0, l = this._introItems.length; i < l; i++) {
       var item = this._introItems[i];
 
       // avoid append a hint twice
-      if (document.querySelector('.introjs-hint[data-step="' + i + '"]'))
+      if (this._hintsWrapper.querySelector('.introjs-hint[data-step="' + i + '"]')) {
+        console.log('already found one for ', i);
         continue;
+      }
 
       var hint = document.createElement('a');
       hint.href = "javascript:void(0);";
@@ -1370,11 +1354,11 @@
       // align the hint position
       _alignHintPosition.call(this, item.hintPosition, hint, item.targetElement);
 
-      hintsWrapper.appendChild(hint);
+      this._hintsWrapper.appendChild(hint);
     }
 
     // adding the hints wrapper
-    document.body.appendChild(hintsWrapper);
+    this._introjsWrapper.appendChild(this._hintsWrapper);
 
     // call the callback function (if any)
     if (typeof (this._hintsAddedCallback) !== 'undefined') {
@@ -1493,7 +1477,7 @@
     _setHelperLayerPosition.call(this, referenceLayer);
 
     referenceLayer.appendChild(tooltipLayer);
-    document.body.appendChild(referenceLayer);
+    this._introjsWrapper.appendChild(referenceLayer);
 
     //set proper position
     _placeTooltip.call(this, hintElement, tooltipLayer, arrowLayer, null, true);
@@ -1602,7 +1586,7 @@
       return this;
     },
     start: function () {
-      _introForElement.call(this, this._targetElement);
+      _introForElement.call(this, this._introjsWrapper);
       return this;
     },
     goToStep: function(step) {
@@ -1618,16 +1602,12 @@
       return this;
     },
     exit: function() {
-      _exitIntro.call(this, this._targetElement);
+      _exitIntro.call(this, this._introjsWrapper);
       return this;
     },
     refresh: function() {
-      // re-align intros
-      _setHelperLayerPosition.call(this, document.querySelector('.introjs-helperLayer'));
-      _setHelperLayerPosition.call(this, document.querySelector('.introjs-tooltipReferenceLayer'));
-
-      //re-align hints
-      _reAlignHints.call(this);
+      _setHelperLayerPosition.call(this, this._introjsWrapper.querySelector('.introjs-helperLayer'));
+      _setHelperLayerPosition.call(this, this._introjsWrapper.querySelector('.introjs-tooltipReferenceLayer'));
       return this;
     },
     onbeforechange: function(providedCallback) {
@@ -1695,7 +1675,7 @@
       return this;
     },
     addHints: function() {
-      _populateHints.call(this, this._targetElement);
+      _populateHints.call(this, this._introjsWrapper);
       return this;
     }
   };
